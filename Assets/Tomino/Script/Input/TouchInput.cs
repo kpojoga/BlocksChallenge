@@ -21,7 +21,7 @@ public class TouchInput : IPlayerInput
     private bool moveDownDetected;
     private float touchBeginTime;
 
-    private readonly float tapMaxDuration = 0.25f;
+    private readonly float tapMaxDuration = 0.35f;
     private readonly float tapMaxOffset = 30.0f;
     private readonly float swipeMaxDuration = 0.3f;
 
@@ -30,7 +30,63 @@ public class TouchInput : IPlayerInput
 
     public void Update()
     {
-        //
+        playerAction = null;
+
+        if (!Enabled)
+            return;
+
+        if (Input.touchCount == 0)
+        {
+            cancelCurrentTouch = false;
+            return;
+        }
+
+        Touch touch = Input.GetTouch(0);
+
+        if (cancelCurrentTouch)
+        {
+            if (touch.phase == TouchPhase.Ended || touch.phase == TouchPhase.Canceled)
+                cancelCurrentTouch = false;
+
+            return;
+        }
+
+        switch (touch.phase)
+        {
+            case TouchPhase.Began:
+                TouchBegan(touch);
+                break;
+
+            case TouchPhase.Moved:
+            case TouchPhase.Stationary:
+            {
+                Vector2 offset = touch.position - initialPosition - processedOffset;
+                HandleMove(touch, offset);
+                break;
+            }
+
+            case TouchPhase.Ended:
+            {
+                float touchDuration = Time.time - touchBeginTime;
+                Vector2 totalOffset = touch.position - initialPosition;
+
+                bool isTap =
+                    touchDuration <= tapMaxDuration &&
+                    totalOffset.magnitude <= tapMaxOffset &&
+                    !moveDownDetected;
+
+                if (isTap)
+                {
+                    playerAction = PlayerAction.Rotate;
+                }
+
+                break;
+            }
+
+            case TouchPhase.Canceled:
+                playerAction = null;
+                break;
+        }
     }
 
     public PlayerAction? GetPlayerAction()
